@@ -44,7 +44,7 @@ if ($t2 -ne $t) { [System.IO.File]::WriteAllText($w, $t2, $utf8); Write-Host "ws
 # 5. Realm: redirecciones por rango privado (evita borrar Keycloak en futuros cambios de red)
 $rp = "$PWD\keycloak\identity-access-realm.json"
 $realm = [System.IO.File]::ReadAllText($rp, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
-$wild = @("http://localhost:8000/*","http://192.168.*","http://10.*") + (16..31 | ForEach-Object { "http://172.$_.*" })
+$wild = @("http://localhost:8000/*","http://${Ip}:8000/*","http://${Ip}:8000/auth/callback","http://192.168.*","http://10.*") + (16..31 | ForEach-Object { "http://172.$_.*" })
 $changed = $false
 foreach ($c in $realm.clients) {
   if ($c.redirectUris -and (($c.redirectUris -join " ") -match "8000")) {
@@ -76,6 +76,27 @@ $loc = curl.exe -s -D - -o NUL http://localhost:8000/login | Select-String -Patt
 if ($loc -and $loc.ToString().Contains($Ip)) { Write-Host "Login OK: redirige a Keycloak en $Ip" } else { Write-Host "AVISO: el login no redirige a $Ip -> $loc" }
 Write-Host ("Acceso desde la red al puerto 8000: " + (Test-NetConnection $Ip -Port 8000 -WarningAction SilentlyContinue).TcpTestSucceeded)
 if (-not (Get-NetFirewallRule -DisplayName "IAM Lab*" -ErrorAction SilentlyContinue)) { Write-Host "AVISO: faltan reglas de firewall (ejecuta el bloque de firewall como administrador)" }
+
+# 8. Actualizar redirect URIs del cliente en Keycloak en ejecucion (sin borrar datos)
+try {
+  $envMap = @{}
+  Get-Content "$PWD\.env" | ForEach-Object { if ($_ -match '^([^#=]+)=(.*)$') { $envMap[$Matches[1].Trim()] = $Matches[2].Trim() } }
+  $token = (Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8081/realms/master/protocol/openid-connect/token" -Body @{client_id='admin-cli';grant_type='password';username=$envMap['KEYCLOAK_ADMIN'];password=$envMap['KEYCLOAK_ADMIN_PASSWORD']} -TimeoutSec 20).access_token
+  $h = @{ Authorization = "Bearer $token"; 'Content-Type' = 'application/json' }
+  $client = @(Invoke-RestMethod -Uri "http://127.0.0.1:8081/admin/realms/identity-access/clients?clientId=identity-access-app" -Headers $h -TimeoutSec 20)[0]
+  if ($client) {
+    $uris = @($client.redirectUris)
+    foreach ($u in @("http://${Ip}:8000/*", "http://${Ip}:8000/auth/callback")) {
+      if ($uris -notcontains $u) { $uris += $u }
+    }
+    $client.redirectUris = $uris
+    Invoke-RestMethod -Method Put -Uri "http://127.0.0.1:8081/admin/realms/identity-access/clients/$($client.id)" -Headers $h -Body ($client | ConvertTo-Json -Depth 20) -TimeoutSec 20 | Out-Null
+    Write-Host "Keycloak: redirect URIs actualizados para $Ip"
+  }
+} catch {
+  Write-Host "AVISO: no se pudieron actualizar los redirect URIs de Keycloak: $($_.Exception.Message)"
+}
+
 Write-Host ""
 Write-Host "Dashboard: http://${Ip}:8000"
 Write-Host "Frigate:   http://${Ip}:5000"

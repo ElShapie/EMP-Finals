@@ -2,7 +2,7 @@
 
 Laboratorio autocontenido para aprender el flujo de identidad digital: inicio de sesión OIDC, permisos por rol, altas y bajas por SCIM y registro de auditoría. El modo incluido usa Keycloak local en Docker para que el ejercicio pueda levantarse sin un tenant externo.
 
-> **Solo para demostración local.** Compose publica los servicios en `127.0.0.1`. No expongas estos contenedores a Internet ni uses nombres, credenciales, tarjetas o datos reales. La configuración de desarrollo no es un despliegue de producción.
+> **Solo para demostración local.** Compose publica los servicios en la LAN (`8000`, `8081`, `5000`, `8554`, `8971`) para que la app móvil pueda conectarse. No expongas estos contenedores a Internet ni uses nombres, credenciales, tarjetas o datos reales. La configuración de desarrollo no es un despliegue de producción.
 
 ## Inicio rápido
 
@@ -25,6 +25,48 @@ Requisitos: Docker Desktop o Docker Engine con el complemento `docker compose`, 
 5. Usa `ingeniero@example.test` y la contraseña de demostración indicada en `.env.example`.
 
 El inicio de Keycloak puede tardar un minuto la primera vez. La guía completa, incluyendo comprobaciones y solución de problemas, está en [`docs/GUIA_INSTALACION.md`](docs/GUIA_INSTALACION.md).
+
+## Inicio rápido unificado (backend + app móvil)
+
+Este repositorio integra el backend (Keycloak + Flask + Frigate) y la app móvil
+Flutter en un solo proyecto. La app vive en [`modules/mobile_flutter/`](modules/mobile_flutter/).
+
+Requisitos: Docker Desktop, Flutter 3.47+ y Python 3.
+
+1. Copia `.env.example` como `.env` y ajusta la IP del PC y del celular cámara:
+
+   ```env
+   FRIGATE_CAM_ENTRADA_IP=192.168.100.29
+   FRIGATE_CAM_PORT=4747
+   ```
+
+   Si cambia la IP del PC, actualiza también el candidato WebRTC en
+   `frigate/config/config.yml`.
+
+2. Levanta el backend:
+
+   ```powershell
+   .\iniciar.ps1
+   ```
+
+3. En otra terminal, compila y sirve la app móvil con su proxy:
+
+   ```powershell
+   .\iniciar-movil.ps1
+   ```
+
+4. Abre `http://localhost:9000` en el PC o `http://IP_DEL_PC:9000` en el celular.
+   El dashboard Flask queda en `http://IP_DEL_PC:8000` y el panel de Frigate en
+   `https://IP_DEL_PC:8971` (certificado autofirmado) o `http://IP_DEL_PC:5000`.
+
+La app detecta automáticamente el host desde la URL cuando corre en web. En un
+dispositivo nativo usa `192.168.100.8` como valor por defecto (editable en
+`lib/main.dart`) y también permite cambiarlo desde el botón **Configuración de
+Servidor**.
+
+Si cambia la IP del PC, ejecuta `.\actualizar-ip.ps1`: ajusta `.env`,
+`frigate/config/config.yml` y los redirect URIs del cliente en Keycloak sin
+borrar datos.
 
 ## Recorrido del MVP
 
@@ -86,7 +128,7 @@ El comando crea `.directory/accounts.json` (ignorado por Git y montado como solo
 
 El laboratorio incluye el servicio de video **Frigate NVR** centralizado en `compose.yaml`:
 - **Portal de Cambio de Turno:** accede a <http://localhost:8000/turno> para registrar relevos y verificar el flujo de cámaras.
-- **Panel Frigate NVR:** accede a <http://localhost:8971> para supervisar las grabaciones y streams.
+- **Panel Frigate NVR:** accede a <https://localhost:8971> (certificado autofirmado) o a <http://localhost:5000> para supervisar las grabaciones y streams.
 - **Cámara en vivo (Zócalo CDMX):** habilitada por defecto como señal de prueba mediante go2rtc y HLS.
 - **Cámaras Android (Entrada e Interior):** configuradas y listas para vincular teléfonos mediante aplicaciones RTSP como *IP Webcam*.
 - **Aplicación Móvil en Flutter:** ubicada en [`modules/mobile_flutter/`](modules/mobile_flutter/), permite visualizar las cámaras por RTSP/MJPEG y asentar turnos desde el teléfono. Consulta la guía completa en [`docs/GUIA_NVR_FRIGATE.md`](docs/GUIA_NVR_FRIGATE.md).
