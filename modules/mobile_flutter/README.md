@@ -1,64 +1,112 @@
-# Módulo Móvil Flutter: Frigate NVR & Control Operativo
+# App móvil Flutter: Frigate NVR & Control Operativo
 
-Este módulo contiene la integración de la aplicación móvil en Flutter para:
-1. **Monitorear en tiempo real las cámaras de Frigate NVR** (Cámara de Entrada, Cámara Interior y Cámara en vivo Zócalo CDMX / Demo).
-2. **Registrar cambios de turno de guardias del SOC** directamente desde el dispositivo móvil.
+Aplicación Flutter del **Identity Access Lab** para:
+
+1. Monitorear en tiempo real las cámaras de Frigate NVR (`cam_entrada`, `cam_interior` y la cámara demo).
+2. Registrar cambios de turno y eventos de acceso del SOC desde el teléfono.
+3. Consultar el dashboard Flask/IAM del laboratorio.
+
+Esta app reemplaza al módulo mínimo anterior y es la versión integrada al proyecto.
 
 ---
 
-## 1. Arquitectura de Conexión Flutter & Frigate NVR
+## 1. Arquitectura
 
-Frigate expone múltiples protocolos para consumir video en clientes móviles:
+```text
+Celular / navegador
+  │
+  ├── http://IP_PC:9000          App Flutter Web (build/web)
+  │        └── /api/*  ────────►  proxy local ──► http://127.0.0.1:5000 (Frigate)
+  │
+  ├── http://IP_PC:8000          Dashboard Flask / IAM
+  └── rtsp://IP_PC:8554/<cam>    go2rtc (RTSP de Frigate)
+```
 
-| Protocolo | Puerto | Endpoint Frigate | Uso recomendado en Flutter |
+El proxy `tools/serve_web.py` es necesario porque Frigate responde
+`401 Missing CSRF header` a peticiones cruzadas desde el navegador. El proxy
+elimina la cabecera `Origin` y agrega CORS.
+
+| Protocolo | Puerto | Endpoint | Uso |
 | :--- | :--- | :--- | :--- |
-| **HTTP MJPEG** | `8971` | `http://<IP_NVR>:8971/api/<cam_name>` | Streaming continuo ligero sin dependencias nativas C++ pesadas. |
-| **HTTP Snapshot Polling** | `8971` | `http://<IP_NVR>:8971/api/<cam_name>/latest.jpg` | Refresco periódico (1 a 5 FPS) ultra compatible con cualquier versión de Flutter. |
-| **RTSP go2rtc** | `8554` | `rtsp://<IP_NVR>:8554/<cam_name>` | Streaming nativo H.264 de ultrabaja latencia (mediante paquetes como `media_kit` o `flutter_vlc_player`). |
-| **REST API** | `8971` | `http://<IP_NVR>:8971/api/cameras` | Listado de cámaras, FPS, estado de detección y eventos de seguridad. |
+| HTTP snapshots | `5000` | `/api/<cam>/latest.jpg?h=480` | Refresco periódico, máxima compatibilidad |
+| API REST | `5000` | `/api/config`, `/api/stats` | Estado de cámaras y NVR |
+| RTSP go2rtc | `8554` | `rtsp://<IP_PC>:8554/<cam>` | Video H.264 de baja latencia |
+| Dashboard Flask | `8000` | `/`, `/turno`, `/registros` | Identidad, turnos y auditoría |
 
 ---
 
-## 2. Direcciones IP para Pruebas
+## 2. Ejecutar en el PC (Flutter Web + proxy)
 
-- **Desde Emulador Android:**
-  - NVR Frigate: `http://10.0.2.2:8971` (RTSP: `rtsp://10.0.2.2:8554`)
-  - App Backend Flask: `http://10.0.2.2:8000`
-- **Desde Dispositivo Físico Android/iOS (Misma Wi-Fi):**
-  - Conecta el celular a la misma red Wi-Fi de tu computadora.
-  - Averigua la IP local de tu PC con `ipconfig` (ejemplo: `192.168.1.50`).
-  - NVR Frigate: `http://192.168.1.50:8971` (RTSP: `rtsp://192.168.1.50:8554`)
-  - App Backend Flask: `http://192.168.1.50:8000`
+Desde la raíz del repositorio:
 
----
-
-## 3. Configuración Requerida en Android (`AndroidManifest.xml`)
-
-Para permitir que Flutter se conecte a direcciones HTTP y RTSP locales sin HTTPS:
-
-Añade `android:usesCleartextTraffic="true"` en `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<application
-    android:label="Identity Access SOC"
-    android:name="${applicationName}"
-    android:icon="@mipmap/ic_launcher"
-    android:usesCleartextTraffic="true">
-    ...
-</application>
+```powershell
+.\iniciar-movil.ps1
 ```
 
-Y añade el permiso de Internet:
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
+Ese script compila `build/web`, levanta el proxy en el puerto `9000` y muestra
+las URLs. Luego abre:
+
+- En el PC: <http://localhost:9000>
+- En el celular (misma Wi-Fi): `http://IP_DEL_PC:9000`
+
+Si ya compilaste y solo quieres servir:
+
+```powershell
+.\iniciar-movil.ps1 -SkipBuild
+```
+
+### Manual
+
+```powershell
+Set-Location modules\mobile_flutter
+flutter pub get
+flutter build web --release
+python tools\serve_web.py
+```
+
+Variables opcionales del proxy:
+
+```powershell
+$env:PORT="9000"
+$env:FRIGATE_URL="http://127.0.0.1:5000"
+python tools\serve_web.py
 ```
 
 ---
 
-## 4. Estructura del Código Dart
+## 3. Ejecutar como app nativa (Android/iOS)
 
-- **`lib/services/frigate_api_service.dart`**: Cliente HTTP para comunicarse con la API de Frigate y con la API de turnos del Lab.
-- **`lib/widgets/camera_stream_card.dart`**: Widget reutilizable para mostrar cada cámara con badge en vivo, indicador de estado y refresco automático.
-- **`lib/screens/frigate_monitor_screen.dart`**: Pantalla principal de monitoreo de cámaras.
-- **`lib/screens/mobile_shift_screen.dart`**: Pantalla móvil para formalizar el relevo de guardia.
-- **`lib/main.dart`**: Aplicación completa lista para ejecutar con `flutter run`.
+```powershell
+Set-Location modules\mobile_flutter
+flutter pub get
+flutter run
+```
+
+Por defecto la app usa el host de la URL cuando corre en web. En un dispositivo
+nativo usa `192.168.100.8`; cámbialo desde el botón de **Configuración de
+Servidor** dentro de la app o edita `_defaultHost` en `lib/main.dart`.
+
+Para HTTP en claro en Android, el `AndroidManifest.xml` ya debe incluir
+`android:usesCleartextTraffic="true"` y el permiso `INTERNET`.
+
+---
+
+## 4. Estructura
+
+- `lib/main.dart`: dashboard completo (cámaras, accesos RFID, turnos, evidencias).
+- `tools/serve_web.py`: servidor estático + proxy `/api` hacia Frigate.
+- `web/`: plantilla de Flutter Web.
+- `android/`, `ios/`, `windows/`, `linux/`, `macos/`: plataformas Flutter.
+
+---
+
+## 5. Solución de problemas
+
+- **La app abre pero no hay cámara:** confirma que DroidCam esté activo y que
+  `FRIGATE_CAM_ENTRADA_IP`/`FRIGATE_CAM_PORT` en `.env` apunten al celular.
+- **`/api/...` devuelve 502:** el proxy no alcanza Frigate; revisa
+  `docker compose ps` y que el puerto `5000` esté arriba.
+- **No carga desde el celular:** permite `python.exe` y el puerto `9000` en el
+  Firewall de Windows para redes privadas.
+- **Login OIDC redirige a una IP vieja:** actualiza `KC_HOSTNAME` en `.env` y
+  recrea Keycloak con `docker compose up -d`.

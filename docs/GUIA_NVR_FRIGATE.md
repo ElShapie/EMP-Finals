@@ -64,7 +64,7 @@ graph TD
 
 4. **Acceder a las interfaces:**
    - **Aplicación Web & Relevos:** <http://localhost:8000/turno>
-   - **Panel NVR Frigate:** <http://localhost:8971>
+    - **Panel NVR Frigate:** <https://localhost:8971> (certificado autofirmado) o <http://localhost:5000>
    - **Keycloak:** <http://localhost:8081>
 
 ---
@@ -145,23 +145,30 @@ docker compose restart frigate
 
 ## 5. Conexión de la Aplicación Móvil en Flutter
 
-El código completo y listo para compilar se encuentra en [`modules/mobile_flutter/`](../modules/mobile_flutter/).
+El código completo y listo para compilar se encuentra en [`modules/mobile_flutter/`](../modules/mobile_flutter/). Es la app unificada del laboratorio: dashboard SOC, cámaras Frigate, accesos RFID y relevo de turnos.
 
 ### Cómo consume video Flutter:
-1. **Modo Liviano (Snapshot Polling / HTTP MJPEG):**
-   - URL: `http://<IP_PC>:8971/api/zocalo_cdmx/latest.jpg`
-   - La app refresca la imagen periódicamente sin requerir codecs C++ ni VLC nativo en Flutter.
+1. **Modo Liviano (Snapshot Polling):**
+   - URL: `http://<IP_PC>:9000/api/<camara>/latest.jpg?h=480`
+   - La app refresca la imagen periódicamente sin requerir codecs C++ ni VLC nativo.
+   - El puerto `9000` es el proxy `tools/serve_web.py`, necesario para evitar el error `401 Missing CSRF header` de Frigate.
 2. **Modo Ultrabaja Latencia (RTSP go2rtc):**
-   - URL: `rtsp://<IP_PC>:8554/zocalo_cdmx`
+   - URL: `rtsp://<IP_PC>:8554/<camara>`
    - Compatible con paquetes como `media_kit` o `flutter_vlc_player`.
 
 ### Para probar la app móvil:
-```bash
-cd modules/mobile_flutter
+```powershell
+# Opción web (recomendada en Windows/iOS): compila y sirve con proxy
+.\iniciar-movil.ps1
+
+# Opción nativa Android/iOS
+cd modules\mobile_flutter
 flutter pub get
 flutter run
 ```
-*(Si pruebas en emulador Android, utiliza la dirección `10.0.2.2` que apunta al localhost de la máquina host).*
+En web la app toma el host de la URL actual; en un dispositivo nativo usa
+`192.168.100.8` y permite cambiarlo desde **Configuración de Servidor**.
+*(Si pruebas en emulador Android, puedes usar `10.0.2.2` para apuntar al host).*
 
 ---
 

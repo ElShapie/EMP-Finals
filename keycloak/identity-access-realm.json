@@ -34,6 +34,8 @@
                         "redirectUris":  [
                                              "http://localhost:8000/auth/callback",
                                              "http://192.168.1.172:8000/*",
+                                             "http://192.168.100.8:8000/*",
+                                             "http://192.168.100.8:8000/auth/callback",
                                              "http://localhost:8000/*",
                                              "http://192.168.*",
                                              "http://10.*",
