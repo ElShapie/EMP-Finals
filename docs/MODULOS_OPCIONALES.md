@@ -1,0 +1,90 @@
+# Módulos opcionales
+
+El Compose principal solo levanta Keycloak y la aplicación. Los siguientes módulos se conservan separados para que se puedan preparar después del recorrido de identidad digital.
+
+## Badge NFC para iniciar sesión
+
+Archivos: [`tools/nfc-bridge.ps1`](../tools/nfc-bridge.ps1), [`app/nfc_cli.py`](../app/nfc_cli.py) y [`docs/NFC_LOGIN.md`](NFC_LOGIN.md).
+
+Permite abrir sesión acercando una tarjeta al lector USB en lugar de escribir la contraseña: el puente del host envía el UID leído a la app, la app lo contrasta con su lista blanca y abre sesión con las credenciales guardadas de ese usuario.
+
+### Requisitos
+
+- Lector NFC USB (probado con ACS ACR122U) y tarjeta ISO14443-A de prueba.
+- Windows con PowerShell 5.1 o superior en el host del lector.
+- `NFC_ENABLED=true` y `NFC_BRIDGE_TOKEN` en el `.env` de la app.
+
+### Preparación
+
+1. Copia `.env.example` como `.env`, activa `NFC_ENABLED=true` y define un `NFC_BRIDGE_TOKEN` de 32 caracteres o más.
+2. Lee el UID de la tarjeta con `powershell -ExecutionPolicy Bypass -File .\tools\nfc-bridge.ps1 -PrintUid`.
+3. Registra la tarjeta con `docker compose exec app python -m app.nfc_cli --uid <UID> --user admin@example.test`.
+4. Arranca el puente con `powershell -ExecutionPolicy Bypass -File .\tools\nfc-bridge.ps1 -Token "<tu-token>"` y deja la terminal abierta.
+5. Abre <http://localhost:8000> sin iniciar sesión y acerca la tarjeta: la sesión se abre sola.
+
+La guía completa, con comprobaciones y límites de seguridad, está en [`docs/NFC_LOGIN.md`](NFC_LOGIN.md). El módulo guarda las credenciales de las cuentas ficticias en el `.env` del host y solo sirve para el laboratorio local enlazado a `127.0.0.1`.
+
+## RFID
+
+Archivos: [`modules/rfid/control_acceso.ino`](../modules/rfid/control_acceso.ino) y [`modules/rfid/registrar_tarjetas.py`](../modules/rfid/registrar_tarjetas.py).
+
+### Requisitos
+
+- Arduino Uno y lector MFRC522 compatibles con el ejemplo; confirmar el modelo real antes de cablear.
+- Lector alimentado a 3.3 V y adaptación de niveles cuando corresponda.
+- Arduino IDE, biblioteca MFRC522 y Python 3.10 o posterior.
+- Puerto serie accesible; Python usa `pyserial`.
+- Las tarjetas y sus UID deben ser de prueba, autorizados y guardados fuera de Git.
+
+### Preparación
+
+1. Revisa los comentarios del `.ino`, el cableado de fabricante y la guía de seguridad del lector. No conectes si el modelo no coincide.
+2. Instala la biblioteca MFRC522 en Arduino IDE, carga el sketch y confirma primero que todas las lecturas se deniegan.
+3. Sustituye los cuatro marcadores pendientes con UID ficticios o aprobados para la demostración; nunca publiques UID reales.
+4. En una terminal Python crea un entorno virtual e instala la dependencia:
+
+   ```bash
+   python -m venv .venv
+   # Windows PowerShell:
+   .\.venv\Scripts\python.exe -m pip install "pyserial>=3.5,<4"
+   # macOS/Linux:
+   .venv/bin/python -m pip install "pyserial>=3.5,<4"
+   ```
+
+5. Cierra Arduino Serial Monitor y ejecuta el registrador desde `modules/rfid/`:
+
+   ```bash
+   python registrar_tarjetas.py --puerto COM3 --archivo eventos_rfid.csv
+   ```
+
+   En Linux el puerto suele ser `/dev/ttyACM0`. Escribe `E` para entrada o `S` para salida.
+
+El CSV puede contener datos de acceso y UID; permanece local y no se añade al repositorio. El prototipo compara UID y no ofrece protección contra clonación. Una lectura permitida tampoco demuestra por sí sola que una persona cruzó una puerta.
+
+## Video con Frigate
+
+Archivos: [`modules/video/compose.yml`](../modules/video/compose.yml), [`config.example.yml`](../modules/video/config.example.yml) y [`.env.example`](../modules/video/.env.example).
+
+### Requisitos
+
+- Docker Engine + Compose, equipo con espacio suficiente y puertos locales disponibles.
+- Cámaras IP o teléfonos que ofrezcan streams compatibles; usuario y contraseña propios.
+- URL real del stream, red local autorizada y política de retención aprobada.
+- La configuración de ejemplo necesita modificar IP, URL y ruta RTSP.
+
+### Arranque independiente
+
+1. Copia `modules/video/` a un equipo dedicado o entra en esa carpeta.
+2. Crea `config/`, `media/` y `certs/`; copia `config.example.yml` a `config/config.yml` y `.env.example` a `.env`.
+3. Cambia IPs y rutas por los valores reales. No uses el `.env.example` como credencial.
+4. Revisa el destino del puerto publicado en `compose.yml`; conserva el enlace a una IP local concreta y no expongas Frigate a Internet.
+5. Revisa el esquema con `docker compose config --quiet`, después ejecuta `docker compose pull` y `docker compose up -d`.
+6. Cambia la contraseña inicial de Frigate, crea una cuenta de solo consulta para SOC y verifica reproducción antes de afirmar que la retención o grabación continua funciona.
+
+El ejemplo contiene valores de red ficticios y una ruta RTSP de reemplazo. El stream MJPEG puede consumir más CPU al grabar. Calcula el espacio con una muestra de las cámaras reales. Las instrucciones de TLS/usuarios dependen de la dirección del NVR; para un uso compartido, configura HTTPS con certificados válidos.
+
+## Microsoft 365 / Entra
+
+No existe un contenedor local que replique las cuentas/licencias y políticas de Microsoft 365. Este módulo requiere un tenant de práctica autorizado, licencias apropiadas y un administrador que apruebe los ejercicios. OneLogin y Microsoft 365 son sistemas separados en este laboratorio; no se sincronizan automáticamente.
+
+Antes del ejercicio, define las cuentas ficticias, MFA, roles y evidencia permitida. Nunca guardes secretos, capturas identificables, registros reales ni datos de personas en el repositorio. Si no hay tenant de prueba, se puede presentar el flujo como diseño y no como integración ejecutada.

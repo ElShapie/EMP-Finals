@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{{ title }} · Identity Access Lab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+{% if user %}
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">IA</span>
+      <span><strong>Identity Access</strong><small>Lab de identidad</small></span>
+    </a>
+    <div class="nav-label">ESPACIO DE TRABAJO</div>
+    <nav aria-label="Navegación principal">
+      <a class="nav-item {% if page == 'home' %}active{% endif %}" href="/"><span class="nav-icon">⌂</span><span>Resumen</span></a>
+      {% if 'consulta' in effective_permissions %}<a class="nav-item {% if page == 'turno' %}active{% endif %}" href="/turno"><span class="nav-icon">⇄</span><span>Cambio de Turno</span></a><a class="nav-item {% if page == 'consultation' %}active{% endif %}" href="/consulta"><span class="nav-icon">◫</span><span>Consulta</span></a>{% endif %}
+      {% if 'registros' in effective_permissions %}<a class="nav-item" href="/registros"><span class="nav-icon">◷</span><span>Bitácora</span></a>{% endif %}
+      {% if 'usuarios' in effective_permissions or 'roles' in effective_permissions %}<a class="nav-item {% if page == 'users' %}active{% endif %}" href="/admin/usuarios"><span class="nav-icon">♙</span><span>Usuarios</span></a>{% endif %}
+      {% if 'roles' in effective_permissions %}<a class="nav-item {% if page == 'roles' %}active{% endif %}" href="/admin/roles"><span class="nav-icon">⚙</span><span>Permisos por rol</span></a>{% endif %}
+      {% if 'nfc' in effective_permissions %}<a class="nav-item {% if page == 'nfc' %}active{% endif %}" href="/nfc"><span class="nav-icon">▤</span><span>Badge NFC</span></a>{% endif %}
+      {% if 'respaldo' in effective_permissions %}<a class="nav-item {% if page == 'backup' %}active{% endif %}" href="/admin/respaldo"><span class="nav-icon">⇅</span><span>Respaldo</span></a>{% endif %}
+      <a class="nav-item" href="https://192.168.1.172:8971" target="_blank" rel="noopener"><span class="nav-icon">📹</span><span>Cámaras Frigate</span></a>
+    </nav>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-note"><span class="status-dot"></span> Entorno local de demostración</div>
+    <div class="profile">
+      <span class="avatar">{{ (user.displayName or user.userName)[0]|upper }}</span>
+      <span class="profile-copy"><strong>{{ user.displayName or user.userName }}</strong><small>{{ user.department or user.title }}</small></span>
+      <form action="/logout" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="logout" type="submit" aria-label="Cerrar sesión" title="Cerrar sesión">↪</button></form>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Identity Access Lab</span><span aria-hidden="true">/</span><strong>{{ title }}</strong></div>
+      <span class="environment-tag"><span class="status-dot"></span> Demo local</span>
+    </header>
+    <div class="page-content">
+      {% if page == 'home' %}
+      <section class="welcome">
+        <div>
+          <p class="eyebrow">CENTRO DE IDENTIDAD</p>
+          <h1>Hola, {{ user.displayName or user.userName }}</h1>
+          <p class="muted">Consulta tus accesos y continúa el recorrido del laboratorio.</p>
+        </div>
+        <div class="welcome-icon" aria-hidden="true">✳</div>
+      </section>
+      <section class="summary-grid" aria-label="Tu perfil">
+        <article class="summary-card"><span class="card-label">Área</span><strong>{{ user.department or 'Laboratorio' }}</strong><small>Equipo asignado</small></article>
+        <article class="summary-card"><span class="card-label">Perfil de acceso</span><strong>{{ user.title }}</strong><small>Permisos asignados en la app</small></article>
+        <article class="summary-card"><span class="card-label">Estado de cuenta</span><strong><span class="status-pill success">Activa</span></strong><small>Sincronizada para esta sesión</small></article>
+      </section>
+      <section class="section-heading"><div><p class="eyebrow">ACCESOS</p><h2>Herramientas del laboratorio</h2></div></section>
+      <section class="feature-grid">
+        {% if 'consulta' in effective_permissions %}<a class="feature-card" href="/turno"><span class="feature-icon orange">⇄</span><span><strong>Cambio de Turno</strong><small>Asienta el relevo de guardia y el estado de cámaras del SOC.</small></span><span class="arrow">→</span></a><a class="feature-card" href="/consulta"><span class="feature-icon blue">⌕</span><span><strong>Consulta</strong><small>Abre el área de consulta disponible para tu perfil.</small></span><span class="arrow">→</span></a>{% endif %}
+        {% if 'registros' in effective_permissions %}<a class="feature-card" href="/registros"><span class="feature-icon violet">◷</span><span><strong>Bitácora</strong><small>Revisa los eventos de acceso autorizados para tu perfil.</small></span><span class="arrow">→</span></a>{% endif %}
+        {% if 'usuarios' in effective_permissions or 'roles' in effective_permissions %}<a class="feature-card" href="/admin/usuarios"><span class="feature-icon green">♙</span><span><strong>Usuarios</strong><small>Crea identidades, vincula tarjetas y ajusta permisos.</small></span><span class="arrow">→</span></a>{% endif %}
+        {% if 'roles' in effective_permissions %}<a class="feature-card" href="/admin/roles"><span class="feature-icon violet">⚙</span><span><strong>Permisos por rol</strong><small>Configura la matriz de autorización del dashboard.</small></span><span class="arrow">→</span></a>{% endif %}
+        {% if 'nfc' in effective_permissions %}<a class="feature-card" href="/nfc"><span class="feature-icon blue">▤</span><span><strong>Badge NFC</strong><small>Administra las tarjetas que abren sesión.</small></span><span class="arrow">→</span></a>{% endif %}
+        {% if 'respaldo' in effective_permissions %}<a class="feature-card" href="/admin/respaldo"><span class="feature-icon orange">⇅</span><span><strong>Respaldo</strong><small>Exporta o restaura usuarios, roles, tarjetas y credenciales.</small></span><span class="arrow">→</span></a>{% endif %}
+      </section>
+      <aside class="info-banner"><span class="info-mark">i</span><span><strong>Laboratorio aislado</strong><small>Las identidades y credenciales de este entorno son ficticias y solo sirven para practicar en localhost.</small></span></aside>
+      {% elif page == 'users' %}
+      <section class="welcome compact">
+        <div><p class="eyebrow">DIRECTORIO LOCAL</p><h1>Usuarios y credenciales</h1><p class="muted">Altas, tarjetas NFC y permisos del laboratorio.</p></div>
+        <div class="welcome-icon" aria-hidden="true">♙</div>
+      </section>
+      <section class="summary-grid user-summary">
+        <article class="summary-card"><span class="card-label">Cuentas registradas</span><strong>{{ users|length }}</strong><small>Identidades de prueba</small></article>
+        <article class="summary-card"><span class="card-label">Cuentas activas</span><strong>{{ users|selectattr('active')|list|length }}</strong><small>Pueden iniciar sesión</small></article>
+        <article class="summary-card"><span class="card-label">Tarjetas vinculadas</span><strong>{{ card_count }}</strong><small>Lista blanca NFC</small></article>
+        <article class="summary-card"><span class="card-label">Credenciales guardadas</span><strong>{{ credential_users|length }}</strong><small>Cifradas en SQLite</small></article>
+      </section>
+      {% if request.args.get('error') %}<p class="form-error">{{ request.args.get('error') }}</p>{% endif %}
+      {% if can_users %}
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">ALTA DE IDENTIDAD</p><h2>Crear usuario y credencial</h2></div><span class="table-count">Keycloak + SQLite</span></div>
+        <form class="admin-form" action="/admin/usuarios" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <label>Nombre completo<input name="displayName" required autocomplete="off"></label>
+          <label>Correo<input type="email" name="userName" required autocomplete="off"></label>
+          <label>Departamento<input name="department" autocomplete="off"></label>
+          <label>Número de empleado<input name="employeeNumber" autocomplete="off"></label>
+          <label>Contraseña inicial<input type="password" name="password" minlength="8" autocomplete="new-password" placeholder="Vacío = generar"></label>
+          <label>Estado<select name="active"><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
+          {% if can_roles %}
+          <label>Rol<select name="title">{% for role in roles %}{% if role != 'superadmin' %}<option value="{{ role }}" {{ 'selected' if role == 'consulta' }}>{{ role }}</option>{% endif %}{% endfor %}</select></label>
+          {% endif %}
+          <label>UID tarjeta NFC (opcional)<input name="nfc_uid" placeholder="0FC728C9" autocomplete="off"></label>
+          <label>Etiqueta de la tarjeta<input name="nfc_label" placeholder="Badge de recepción" autocomplete="off"></label>
+          {% if can_roles %}
+          <fieldset class="permission-grid wide"><legend>Permisos adicionales al rol</legend>{% for permission in all_permissions %}<label class="permission-check"><input type="checkbox" name="extraPermissions" value="{{ permission }}"> {{ permission }}</label>{% endfor %}</fieldset>
+          {% endif %}
+          <div class="form-actions"><button class="primary-button" type="submit">Crear usuario <span aria-hidden="true">→</span></button></div>
+        </form>
+        <p class="form-hint">{{ 'Puedes asignar rol y permisos adicionales.' if can_roles else 'Tu perfil puede crear identidades, dar altas o bajas y vincular tarjetas; los permisos los asigna un perfil autorizado.' }}</p>
+      </section>
+      {% endif %}
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">DIRECTORIO</p><h2>Cuentas, tarjetas y permisos</h2></div><span class="table-count">{{ users|length }} usuarios</span></div>
+        <div class="table-scroll"><table><thead><tr><th>Persona</th><th>Área</th><th>Correo</th><th>Rol y permisos</th><th>Tarjeta NFC</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        {% for item in users %}
+        {% set is_protected = item.userName in ('emp-001@securityteam.com', 'emp-004@securityteam.com', 'emp-010@securityteam.com') %}
+        <tr>
+          <td data-label="Persona"><span class="person-cell"><span class="avatar small">{{ (item.displayName or item.userName)[0]|upper }}</span><strong>{{ item.displayName or item.userName }}</strong>{% if item.userName in credential_users %}<span class="credential-flag" title="Tiene una credencial cifrada guardada">clave</span>{% endif %}</span></td>
+          <td data-label="Área">{{ item.department or 'General' }}</td>
+          <td data-label="Correo" class="email-cell">{{ item.userName }}</td>
+          <td data-label="Rol y permisos"><span class="role-pill">{{ item.title }}</span>{% for permission in item.extraPermissions or [] %}<span class="permission-chip">{{ permission }}</span>{% endfor %}</td>
+          <td data-label="Tarjeta NFC">{% for card in cards_by_user.get(item.userName, []) %}<span class="uid-chip" title="{{ card.label or 'Sin etiqueta' }}">{{ card.uid }}</span>{% else %}<span class="muted">Sin tarjeta</span>{% endfor %}</td>
+          <td data-label="Estado"><span class="status-pill {{ 'success' if item.active else 'danger' }}">{{ 'Activa' if item.active else 'Inactiva' }}</span></td>
+          <td data-label="Acciones">
+            <details class="row-actions">
+              <summary>Gestionar</summary>
+              <div class="action-panel">
+                {% if can_roles %}
+                <form class="action-form" action="/admin/usuarios/{{ item.id }}/rol" method="post">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <label>Rol<select name="title">{% for role in roles %}{% if role != 'superadmin' or is_protected %}<option value="{{ role }}" {{ 'selected' if role == item.title }}>{{ role }}</option>{% endif %}{% endfor %}</select></label>
+                  <fieldset class="permission-grid"><legend>Permisos extra</legend>{% for permission in all_permissions %}<label class="permission-check"><input type="checkbox" name="extraPermissions" value="{{ permission }}" {{ 'checked' if permission in (item.extraPermissions or []) }}> {{ permission }}</label>{% endfor %}</fieldset>
+                  <button class="primary-button small" type="submit">Guardar permisos</button>
+                </form>
+                {% endif %}
+                {% if can_users %}
+                <form class="action-form" action="/admin/usuarios/{{ item.id }}/credencial" method="post">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <label>Nueva contraseña<input type="password" name="password" minlength="8" autocomplete="new-password" placeholder="Vacío = generar"></label>
+                  <button class="primary-button small" type="submit">Actualizar contraseña</button>
+                  <small class="form-hint">{{ 'Credencial cifrada guardada.' if item.userName in credential_users else 'Sin credencial guardada para badge.' }}</small>
+                </form>
+                <form class="action-form" action="/admin/usuarios/{{ item.id }}/estado" method="post">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <input type="hidden" name="active" value="{{ 'false' if item.active else 'true' }}">
+                  <button class="danger-button" type="submit">{{ 'Dar de baja' if item.active else 'Reactivar' }}</button>
+                </form>
+                {% endif %}
+                {% if can_nfc %}
+                <form class="action-form" action="/admin/usuarios/{{ item.id }}/tarjeta" method="post">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <label>UID tarjeta<input name="uid" placeholder="0FC728C9" required autocomplete="off"></label>
+                  <label>Etiqueta<input name="label" placeholder="Opcional" autocomplete="off"></label>
+                  <button class="primary-button small" type="submit">Vincular tarjeta</button>
+                </form>
+                {% for card in cards_by_user.get(item.userName, []) %}
+                <form class="action-form inline-form" action="/admin/usuarios/{{ item.id }}/tarjeta" method="post">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <input type="hidden" name="action" value="remove">
+                  <input type="hidden" name="uid" value="{{ card.uid }}">
+                  <span class="uid-chip">{{ card.uid }}</span>
+                  <button class="danger-button" type="submit">Quitar</button>
+                </form>
+                {% endfor %}
+                {% endif %}
+                {% if not can_users and not can_roles and not can_nfc %}<p class="muted">Sin acciones disponibles para tu perfil.</p>{% endif %}
+              </div>
+            </details>
+          </td>
+        </tr>
+        {% endfor %}</tbody></table></div>
+      </section>
+      <aside class="info-banner"><span class="info-mark">i</span><small><strong>Permisos efectivos</strong> = los del rol + los adicionales de la persona. El rol base se configura en «Permisos por rol».</small></aside>
+      {% elif page == 'roles' %}
+      <section class="welcome compact"><div><p class="eyebrow">GOBIERNO DE ACCESO</p><h1>Permisos por rol</h1><p class="muted">Los perfiles con el permiso <strong>roles</strong> (por ejemplo, SOC y el administrador general) modifican esta matriz. El rol superadmin siempre conserva gestión de usuarios y roles.</p></div><div class="welcome-icon">⚙</div></section>
+      {% for role, permissions in roles.items() %}<section class="table-card nfc-form-card"><div class="table-heading"><div><p class="eyebrow">ROL</p><h2>{{ role }}</h2></div></div><form class="nfc-form role-form" action="/admin/roles/{{ role }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}">{% for permission in all_permissions %}<label class="permission-check"><input type="checkbox" name="permissions" value="{{ permission }}" {{ 'checked' if permission in permissions }} {{ 'required' if role == 'superadmin' and permission in ('usuarios','roles') }}> {{ permission }}</label>{% endfor %}<button class="primary-button" type="submit">Guardar permisos</button></form></section>{% endfor %}
+      {% elif page == 'backup' %}
+      <section class="welcome compact"><div><p class="eyebrow">CONTINUIDAD</p><h1>Respaldo de identidades</h1><p class="muted">Descarga o restaura usuarios, roles, tarjetas NFC y credenciales de la base local.</p></div><div class="welcome-icon" aria-hidden="true">⇅</div></section>
+      <section class="summary-grid">
+        <article class="summary-card"><span class="card-label">Usuarios</span><strong>{{ counts.users }}</strong><small>Identidades locales</small></article>
+        <article class="summary-card"><span class="card-label">Tarjetas NFC</span><strong>{{ counts.cards }}</strong><small>Lista blanca</small></article>
+        <article class="summary-card"><span class="card-label">Credenciales</span><strong>{{ counts.credentials }}</strong><small>Cifradas en reposo</small></article>
+      </section>
+      {% if request.args.get('error') %}<p class="form-error">{{ request.args.get('error') }}</p>{% endif %}
+      {% if request.args.get('ok') %}<p class="form-success">{{ request.args.get('ok') }}</p>{% endif %}
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">EXPORTAR</p><h2>Descargar respaldo JSON</h2></div><span class="table-count">Archivo secreto</span></div>
+        <p class="muted">Incluye usuarios, la matriz de permisos, las tarjetas NFC y las contraseñas necesarias para el acceso por badge. Guarda el archivo como material sensible.</p>
+        <form class="inline-form" action="/admin/respaldo/exportar" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="primary-button" type="submit">Descargar respaldo <span aria-hidden="true">↓</span></button>
+        </form>
+      </section>
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">IMPORTAR</p><h2>Restaurar desde un respaldo</h2></div><span class="table-count">Validación previa</span></div>
+        <form class="admin-form" action="/admin/respaldo/importar" method="post" enctype="multipart/form-data">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <label class="wide">Archivo JSON<input type="file" name="file" accept="application/json,.json" required></label>
+          <label>Modo<select name="mode"><option value="merge">Combinar con lo existente</option><option value="replace">Reemplazar tarjetas y credenciales</option></select></label>
+          <div class="form-actions"><button class="primary-button" type="submit">Importar respaldo <span aria-hidden="true">↑</span></button></div>
+        </form>
+        <p class="form-hint">«Combinar» actualiza o crea los usuarios del archivo y conserva el resto. «Reemplazar» además sustituye tarjetas y credenciales, y da de baja a los usuarios que no aparezcan en el respaldo. Las identidades se sincronizan con Keycloak antes de escribir en SQLite.</p>
+      </section>
+      {% elif page == 'new_user_secret' %}
+      <section class="welcome compact"><div><p class="eyebrow">ALTA COMPLETADA</p><h1>{{ created_user.displayName or created_user.userName }}</h1><p class="muted">La identidad se creó en el directorio local y Keycloak. Entrega esta contraseña temporal al usuario.</p></div><div class="welcome-icon">✓</div></section>
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">MOSTRAR UNA SOLA VEZ</p><h2>{{ created_user.userName }}</h2></div></div>
+        <div class="secret-panel">
+          <div><span class="card-label">Contraseña</span><p class="secret-value">{{ initial_password }}</p></div>
+          <div><span class="card-label">Rol y permisos</span><p><span class="role-pill">{{ created_user.title }}</span>{% for permission in created_user.extraPermissions or [] %}<span class="permission-chip">{{ permission }}</span>{% endfor %}</p></div>
+          {% if linked_card %}<div><span class="card-label">Tarjeta NFC</span><p><span class="uid-chip">{{ linked_card.uid }}</span>{% if linked_card.label %}<small class="muted"> · {{ linked_card.label }}</small>{% endif %}</p></div>{% endif %}
+        </div>
+      </section>
+      <a class="primary-button back-button" href="/admin/usuarios">Volver a usuarios <span aria-hidden="true">→</span></a>
+      {% elif page == 'events' %}
+      <section class="welcome compact"><div><p class="eyebrow">TRAZABILIDAD</p><h1>Bitácora de eventos</h1><p class="muted">Últimos eventos registrados en este laboratorio local.</p></div><div class="welcome-icon" aria-hidden="true">◷</div></section>
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">AUDITORÍA</p><h2>Actividad reciente</h2></div><span class="table-count">{{ events|length }} eventos</span></div>
+        <div class="table-scroll"><table><thead><tr><th>Fecha UTC</th><th>Identidad</th><th>Acción</th><th>Resultado</th></tr></thead><tbody>
+        {% for event in events %}<tr><td data-label="Fecha UTC">{{ event.time }}</td><td data-label="Identidad" class="email-cell">{{ event.user }}</td><td data-label="Acción">{{ event.action }}</td><td data-label="Resultado"><span class="status-pill {{ 'success' if event.result in ('OK', 'PERMITIDO') else 'danger' }}">{{ event.result }}</span></td></tr>{% else %}<tr><td class="empty-state" colspan="4">Aún no hay eventos registrados.</td></tr>{% endfor %}</tbody></table></div>
+      </section>
+      {% elif page == 'nfc' %}
+      <section class="welcome compact"><div><p class="eyebrow">ACCESO CON TARJETA</p><h1>Badge NFC</h1><p class="muted">Tarjetas habilitadas para abrir sesión en este laboratorio sin escribir la contraseña.</p></div><div class="welcome-icon" aria-hidden="true">▤</div></section>
+      <section class="summary-grid"><article class="summary-card"><span class="card-label">Tarjetas registradas</span><strong>{{ cards|length }}</strong><small>Lista blanca local</small></article><article class="summary-card"><span class="card-label">Estado del módulo</span><strong><span class="status-pill {{ 'success' if nfc_enabled else 'danger' }}">{{ 'Activo' if nfc_enabled else 'Inactivo' }}</span></strong><small>Puente NFC en el host</small></article><article class="summary-card"><span class="card-label">Ventana de toque</span><strong>{{ nfc_ttl }} s</strong><small>Tiempo máximo para iniciar sesión</small></article></section>
+      <section class="table-card">
+        <div class="table-heading"><div><p class="eyebrow">LISTA BLANCA</p><h2>Tarjetas autorizadas</h2></div><span class="table-count">{{ cards|length }} tarjetas</span></div>
+        <div class="table-scroll"><table><thead><tr><th>Tarjeta</th><th>Usuario</th><th>Etiqueta</th><th>Alta</th><th>Acciones</th></tr></thead><tbody>
+        {% for card in cards %}<tr><td data-label="Tarjeta" class="email-cell">{{ card.uid }}</td><td data-label="Usuario">{{ card.username }}</td><td data-label="Etiqueta">{{ card.label or '—' }}</td><td data-label="Alta" class="email-cell">{{ card.created_at }}</td><td data-label="Acciones"><form action="/nfc/tarjetas/eliminar" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="uid" value="{{ card.uid }}"><button class="danger-button" type="submit">Retirar</button></form></td></tr>
+        {% else %}<tr><td class="empty-state" colspan="5">Todavía no hay tarjetas registradas.</td></tr>{% endfor %}</tbody></table></div>
+      </section>
+      <section class="table-card nfc-form-card">
+        <div class="table-heading"><div><p class="eyebrow">ALTA</p><h2>Registrar una tarjeta</h2></div></div>
+        {% if request.args.get('error') %}<p class="form-error">{{ request.args.get('error') }}</p>{% endif %}
+        <form class="nfc-form" action="/nfc/tarjetas" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <label>UID de la tarjeta<input name="uid" placeholder="0FC728C9" required></label>
+          <label>Usuario del laboratorio<select name="username">{% for item in users %}<option value="{{ item.userName }}" {{ 'selected' if item.userName == 'admin@example.test' }}>{{ item.displayName or item.userName }} · {{ item.userName }}</option>{% endfor %}</select></label>
+          <label>Etiqueta<input name="label" placeholder="Tarjeta del administrador"></label>
+          <button class="primary-button" type="submit">Registrar tarjeta <span aria-hidden="true">→</span></button>
+        </form>
+      </section>
+      <aside class="info-banner"><span class="info-mark">i</span><span><strong>Cómo se valida</strong><small>El puente NFC del host envía el UID leído a la app; la app contrasta con esta lista y, si la tarjeta está registrada, abre sesión con las credenciales guardadas del usuario indicado.</small></span></aside>
+      {% elif page == 'consultation' or page == 'maintenance' or page == 'administration' %}
+      <section class="welcome compact"><div><p class="eyebrow">CONTROL DE ACCESO</p><h1>{{ title }} permitida</h1><p class="muted">El servidor autorizó esta acción con los permisos de tu perfil.</p></div><div class="welcome-icon" aria-hidden="true">✓</div></section>
+      <section class="summary-grid"><article class="summary-card"><span class="card-label">Identidad</span><strong>{{ user.displayName or user.userName }}</strong><small>{{ user.userName }}</small></article><article class="summary-card"><span class="card-label">Área</span><strong>{{ user.department or 'Laboratorio' }}</strong><small>Perfil local</small></article><article class="summary-card"><span class="card-label">Rol validado</span><strong>{{ user.title }}</strong><small>Autorización verificada en servidor</small></article></section>
+      <a class="primary-button back-button" href="/">Volver al resumen <span aria-hidden="true">→</span></a>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% else %}
+<main class="login-shell">
+  <section class="login-card">
+    <a class="brand login-brand" href="/"><span class="brand-mark" aria-hidden="true">IA</span><span><strong>Identity Access</strong><small>Lab de identidad</small></span></a>
+    <p class="eyebrow">ENTORNO DE PRÁCTICA</p><h1>Acceso al laboratorio</h1>
+    <p class="muted">Inicia sesión para consultar tu perfil y recorrer los controles de identidad.</p>
+    <a class="primary-button" href="/login">Iniciar sesión con Keycloak <span aria-hidden="true">→</span></a>
+    {% if nfc_enabled %}
+    <div class="badge-panel" id="badge-panel" data-state="idle">
+      <span class="badge-indicator" aria-hidden="true"></span>
+      <span class="badge-copy"><strong>Esperando badge NFC</strong><small id="badge-status">Acerca tu tarjeta al lector para iniciar sesión automáticamente.</small></span>
+    </div>
+    {% endif %}
+    <div class="login-foot"><span class="status-dot"></span> Keycloak local · datos ficticios</div>
+  </section>
+</main>
+{% endif %}
+{% if nfc_enabled and not user %}
+<script>
+(function () {
+  var panel = document.getElementById('badge-panel');
+  if (!panel) { return; }
+  var status = document.getElementById('badge-status');
+  var csrf = {{ csrf|tojson }};
+  function poll() {
+    fetch('/nfc/poll', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({csrf: csrf})
+    }).then(function (response) {
+      return response.json().catch(function () { return {}; });
+    }).then(function (data) {
+      if (data && data.login) {
+        panel.dataset.state = 'ok';
+        status.textContent = 'Tarjeta aceptada. Abriendo sesión...';
+        window.location.reload();
+        return;
+      }
+      if (data && data.error) {
+        panel.dataset.state = 'error';
+        status.textContent = data.error;
+      }
+    }).catch(function () {});
+  }
+  window.setInterval(poll, 1500);
+})();
+</script>
+{% endif %}
+</body>
+</html>
+
+
